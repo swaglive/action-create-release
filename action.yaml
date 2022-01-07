@@ -1,0 +1,63 @@
+name: Create Release
+description: Create Github Release
+inputs:
+  tag:
+    description: Tag to create release
+    required: true
+    default: ${{ github.ref_name }}
+  generate-notes:
+    description: Automatically generate release notes
+    required: true
+    default: true
+  prerelease:
+    description: Mark release as prerelease
+    required: false
+    default: false
+  files:
+    description: Files to attach to the release
+    required: false
+  discussion-category:
+    description: Github Discussion category
+    required: false
+  token:
+    description: Github Token
+    required: true
+    default: ${{ github.token }}
+  repository:
+    description: Repository to create the release for
+    required: true
+    default: ${{ github.repository }}
+runs:
+  using: composite
+  steps:
+  - shell: bash
+    run: |
+      # HACK: Remove with gh 2.4.0
+      curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
+      echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+      sudo apt update
+      sudo apt install gh
+      gh version
+  - shell: bash
+    env:
+      GITHUB_TOKEN: ${{ inputs.token }}
+      GH_REPO: ${{ inputs.repository }}
+      PRERELEASE: ${{ inputs.prerelease }}
+      GENERATE_NOTES: ${{ inputs.generate-notes }}
+      DISCUSSION_CATEGORY: ${{ inputs.discussion-category }}
+    run: |
+      set -x
+      TRUE=(true t 1)
+      OPTS=()
+      [[ "${TRUE[*]}" =~ "$PRERELEASE" ]] && OPTS+=(--prerelease)
+      [[ "${TRUE[*]}" =~ "$GENERATE_NOTES" ]] && OPTS+=(--generate-notes)
+      [[ "$DISCUSSION_CATEGORY" =~ ".+" ]] && OPTS+=(--discussion-category $DISCUSSION_CATEGORY)
+      gh release create ${{ inputs.tag }} ${OPTS[@]}
+  - shell: bash
+    env:
+      GITHUB_TOKEN: ${{ inputs.token }}
+      GH_REPO: ${{ inputs.repository }}
+    if: ${{ inputs.files }}
+    run: |
+      # BUG: https://github.com/cli/cli/issues/4993
+      gh release upload ${{ inputs.tag }} --clobber ${{ inputs.files }}
