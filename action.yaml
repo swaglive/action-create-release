@@ -51,7 +51,7 @@ runs:
       OPTS=()
       [[ "${TRUE[*]}" =~ "$PRERELEASE" ]] && OPTS+=(--prerelease)
       [[ "${TRUE[*]}" =~ "$GENERATE_NOTES" ]] && OPTS+=(--generate-notes)
-      [[ "$DISCUSSION_CATEGORY" =~ ".+" ]] && OPTS+=(--discussion-category $DISCUSSION_CATEGORY)
+      [[ "$DISCUSSION_CATEGORY" =~ .+ ]] && OPTS+=(--discussion-category $DISCUSSION_CATEGORY)
       gh release create ${{ inputs.tag }} ${OPTS[@]}
   - shell: bash
     env:
