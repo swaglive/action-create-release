@@ -38,18 +38,19 @@ runs:
       GENERATE_NOTES: ${{ inputs.generate-notes }}
       DISCUSSION_CATEGORY: ${{ inputs.discussion-category }}
     run: |
-      set -x
       TRUE=(true t 1)
       OPTS=()
+
       [[ "${TRUE[*]}" =~ "$PRERELEASE" ]] && OPTS+=(--prerelease)
       [[ "${TRUE[*]}" =~ "$GENERATE_NOTES" ]] && OPTS+=(--generate-notes)
       [[ "$DISCUSSION_CATEGORY" =~ .+ ]] && OPTS+=(--discussion-category $DISCUSSION_CATEGORY)
+
       gh release create ${{ inputs.tag }} ${OPTS[@]}
   - shell: bash
+    if: ${{ inputs.files }}
     env:
       GITHUB_TOKEN: ${{ inputs.token }}
       GH_REPO: ${{ inputs.repository }}
-    if: ${{ inputs.files }}
     run: |
       # BUG: https://github.com/cli/cli/issues/4993
       gh release upload ${{ inputs.tag }} --clobber ${{ inputs.files }}
