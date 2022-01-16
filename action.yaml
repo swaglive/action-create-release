@@ -41,8 +41,8 @@ runs:
       TRUE=(true t 1)
       OPTS=()
 
-      [[ "${TRUE[*]}" =~ "$PRERELEASE" ]] && OPTS+=(--prerelease)
       [[ "${TRUE[*]}" =~ "$GENERATE_NOTES" ]] && OPTS+=(--generate-notes)
+      [[ "${TRUE[*]}" =~ "$PRERELEASE" ]] && OPTS+=(--prerelease)
       [[ "$DISCUSSION_CATEGORY" =~ .+ ]] && OPTS+=(--discussion-category $DISCUSSION_CATEGORY)
 
       gh release create ${{ inputs.tag }} ${OPTS[@]}
