@@ -9,6 +9,9 @@ inputs:
     description: Automatically generate release notes
     required: true
     default: true
+  generate-notes-since:
+    description: Base tag to generate release notes as a base
+    required: false
   prerelease:
     description: Mark release as prerelease
     required: false
@@ -37,15 +40,36 @@ runs:
       PRERELEASE: ${{ inputs.prerelease }}
       GENERATE_NOTES: ${{ inputs.generate-notes }}
       DISCUSSION_CATEGORY: ${{ inputs.discussion-category }}
+      PREVIOUS_TAG_NAME: ${{ inputs.generate-notes-since }}
     run: |
       TRUE=(true t 1)
-      OPTS=()
+      TITLE=
+      NOTES_FILE=$(mktemp --tmpdir --suffix .md body.XXXXXXXXXX)
 
-      [[ "${TRUE[*]}" =~ "$GENERATE_NOTES" ]] && OPTS+=(--generate-notes)
+      if [[ "${TRUE[*]}" =~ "$GENERATE_NOTES" ]]; then
+        OPTS=()
+        [[ "$PREVIOUS_TAG_NAME" =~ .+ ]] && OPTS+=(-f previous_tag_name=$PREVIOUS_TAG_NAME)
+
+        results=$(
+          gh api repos/swaglive/swag-server/releases/generate-notes \
+            -f tag_name=${{ inputs.tag }} \
+            ${OPTS[@]}
+        )
+        TITLE=$(echo $results | jq -r '.name')
+        echo $results | jq -r '.body' >> $NOTES_FILE
+      fi
+
+      OPTS=()
       [[ "${TRUE[*]}" =~ "$PRERELEASE" ]] && OPTS+=(--prerelease)
       [[ "$DISCUSSION_CATEGORY" =~ .+ ]] && OPTS+=(--discussion-category $DISCUSSION_CATEGORY)
+      [[ "$TITLE" =~ .+ ]] && OPTS+=(--title $TITLE)
+      [[ "$NOTES_FILE" =~ .+ ]] && OPTS+=(--notes-file $NOTES_FILE)
 
       gh release create ${{ inputs.tag }} ${OPTS[@]}
+
+      echo "::group::Release Notes"
+      cat $NOTES_FILE
+      echo "::endgroup::"
   - shell: bash
     if: ${{ inputs.files }}
     env:
