@@ -51,7 +51,7 @@ runs:
         [[ "$PREVIOUS_TAG_NAME" =~ .+ ]] && OPTS+=(-f previous_tag_name=$PREVIOUS_TAG_NAME)
 
         results=$(
-          gh api repos/swaglive/swag-server/releases/generate-notes \
+          gh api repos/$GH_REPO/releases/generate-notes \
             -f tag_name=${{ inputs.tag }} \
             ${OPTS[@]}
         )
