@@ -5,13 +5,19 @@ inputs:
     description: Tag to create release
     required: true
     default: ${{ github.ref_name }}
+  name:
+    description: Release name
+    required: false
+  body:
+    description: Release body
+    required: false
   generate-notes:
-    description: Automatically generate release notes
+    description: >
+      Automatically generate release notes.
+      Base tag to generate release notes as a base
+      Valid values: Boolean or tag ref
     required: true
     default: true
-  generate-notes-since:
-    description: Base tag to generate release notes as a base
-    required: false
   prerelease:
     description: Mark release as prerelease
     required: false
@@ -30,46 +36,48 @@ inputs:
     description: Repository to create the release for
     required: true
     default: ${{ github.repository }}
+outputs:
+  id:
+    description: Release ID
+    value: ${{ steps.create.outputs.id }}
+  json:
+    description: Release JSON
+    value: ${{ steps.create.outputs.json }}
 runs:
   using: composite
   steps:
+  - id: generated-release-notes
+    if: ${{ inputs.generate-notes }}
+    uses: swaglive/action-generate-release-notes@v1
+    with:
+      tag: ${{ inputs.tag }}
+      base: ${{ inputs.generate-notes }}
+
   - shell: bash
+    id: create
     env:
       GITHUB_TOKEN: ${{ inputs.token }}
       GH_REPO: ${{ inputs.repository }}
-      PRERELEASE: ${{ inputs.prerelease }}
-      GENERATE_NOTES: ${{ inputs.generate-notes }}
-      DISCUSSION_CATEGORY: ${{ inputs.discussion-category }}
-      PREVIOUS_TAG_NAME: ${{ inputs.generate-notes-since }}
+      OPTS: |
+        tag_name: ${{ inputs.tag }}
+        name: ${{ inputs.name || steps.generated-release-notes.outputs.name || inputs.tag }}
+        body:
+        - ${{ toJSON(inputs.body || null) }}
+        - ${{ steps.generated-release-notes.outputs.body }}
+        prerelease: ${{ inputs.prerelease }}
+        discussion_category_name: ${{ inputs.discussion_category_name }}
     run: |
-      TRUE=(true t 1)
-      TITLE=
-      NOTES_FILE=$(mktemp --tmpdir --suffix .md body.XXXXXXXXXX)
+      opts=$(
+        yq e -o json <<< $OPTS | jq 'del(.. | nulls) | .body |= join("\n\n")'
+      )
 
-      if [[ "${TRUE[*]}" =~ "$GENERATE_NOTES" ]]; then
-        OPTS=()
-        [[ "$PREVIOUS_TAG_NAME" =~ .+ ]] && OPTS+=(-f previous_tag_name=$PREVIOUS_TAG_NAME)
+      release=$(
+        gh api repos/$GH_REPO/releases --input - <<< $opts
+      )
 
-        results=$(
-          gh api repos/$GH_REPO/releases/generate-notes \
-            -f tag_name=${{ inputs.tag }} \
-            ${OPTS[@]}
-        )
-        TITLE=$(echo $results | jq -r '.name')
-        echo $results | jq -r '.body' >> $NOTES_FILE
-      fi
+      echo "::set-output name=id::$(jq -rc '.id' <<< $release)"
+      echo "::set-output name=json::$(jq -c '.' <<< $release)"
 
-      OPTS=()
-      [[ "${TRUE[*]}" =~ "$PRERELEASE" ]] && OPTS+=(--prerelease)
-      [[ "$DISCUSSION_CATEGORY" =~ .+ ]] && OPTS+=(--discussion-category $DISCUSSION_CATEGORY)
-      [[ "$TITLE" =~ .+ ]] && OPTS+=(--title $TITLE)
-      [[ "$NOTES_FILE" =~ .+ ]] && OPTS+=(--notes-file $NOTES_FILE)
-
-      gh release create ${{ inputs.tag }} ${OPTS[@]}
-
-      echo "::group::Release Notes"
-      cat $NOTES_FILE
-      echo "::endgroup::"
   - shell: bash
     if: ${{ inputs.files }}
     env:
