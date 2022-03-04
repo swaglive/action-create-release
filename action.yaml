@@ -61,11 +61,11 @@ runs:
       OPTS: |
         tag_name: ${{ inputs.tag }}
         name: ${{ inputs.name || steps.generated-release-notes.outputs.name || inputs.tag }}
+        prerelease: ${{ inputs.prerelease }}
+        discussion_category_name: ${{ inputs.discussion-category }}
         body:
         - ${{ toJSON(inputs.body || null) }}
         - ${{ steps.generated-release-notes.outputs.body }}
-        prerelease: ${{ inputs.prerelease }}
-        discussion_category_name: ${{ inputs.discussion-category }}
     run: |
       opts=$(
         yq e -o json <<< $OPTS | jq -c 'del(.. | nulls) | .body |= join("\n\n")'
