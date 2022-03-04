@@ -68,7 +68,7 @@ runs:
         discussion_category_name: ${{ inputs.discussion-category }}
     run: |
       opts=$(
-        yq e -o json <<< $OPTS | jq 'del(.. | nulls) | .body |= join("\n\n")'
+        yq e -o json <<< $OPTS | jq -c 'del(.. | nulls) | .body |= join("\n\n")'
       )
 
       release=$(
