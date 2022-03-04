@@ -65,7 +65,7 @@ runs:
         - ${{ toJSON(inputs.body || null) }}
         - ${{ steps.generated-release-notes.outputs.body }}
         prerelease: ${{ inputs.prerelease }}
-        discussion_category_name: ${{ inputs.discussion_category_name }}
+        discussion_category_name: ${{ inputs.discussion-category }}
     run: |
       opts=$(
         yq e -o json <<< $OPTS | jq 'del(.. | nulls) | .body |= join("\n\n")'
