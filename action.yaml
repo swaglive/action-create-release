@@ -9,7 +9,7 @@ inputs:
     description: Release name
     required: false
   body:
-    description: Release body
+    description: Release body as a JSON string
     required: false
   generate-notes:
     description: >
