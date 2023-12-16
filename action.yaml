@@ -75,8 +75,8 @@ runs:
         gh api repos/{owner}/{repo}/releases --input - <<< $opts
       )
 
-      echo "::set-output name=id::$(jq -rc '.id' <<< $release)"
-      echo "::set-output name=json::$(jq -c '.' <<< $release)"
+      echo "id=$(jq -rc '.id' <<< $release)" >> $GITHUB_OUTPUT
+      echo "json=$(jq -c '.' <<< $release)" >> $GITHUB_OUTPUT
 
   - shell: bash
     if: ${{ inputs.files }}
