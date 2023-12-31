@@ -9,13 +9,14 @@ inputs:
     description: Release name
     required: false
   body:
-    description: Release body as a JSON string
+    description: Release body
     required: false
-  generate-notes:
-    description: >
-      Automatically generate release notes.
-      Base tag to generate release notes as a base
-      Valid values: Boolean or tag ref
+  body-file:
+    description: Filename to the release body content
+    required: false
+  generate-release-notes:
+    description: |-
+      Automatically generate release notes. Set to true to generate release notes from the previous latest release. Valid values: Boolean or tag ref
     required: true
     default: true
   prerelease:
@@ -23,66 +24,118 @@ inputs:
     required: false
     default: false
   files:
-    description: Files to attach to the release
+    description: Files to attach to the release. One file per line
     required: false
   discussion-category:
     description: Github Discussion category
     required: false
-  token:
-    description: Github Token
-    required: true
-    default: ${{ github.token }}
-  repository:
-    description: Repository to create the release for
-    required: true
-    default: ${{ github.repository }}
+  dry-run:
+    description: Dry run
+    required: false
+    default: false
 outputs:
   id:
     description: Release ID
-    value: ${{ steps.create.outputs.id }}
+    value: ${{ fromJSON(steps.release.outputs.result).id }}
+  url:
+    description: Release URL
+    value: ${{ fromJSON(steps.release.outputs.result).url }}
+  name:
+    description: Release Name
+    value: ${{ fromJSON(steps.release.outputs.result).name }}
+  body:
+    description: Release Body
+    value: ${{ fromJSON(steps.release.outputs.result).body }}
+  tag:
+    description: Release Tag
+    value: ${{ fromJSON(steps.release.outputs.result).tag_name }}
+  prerelease:
+    description: Release Prerelease
+    value: ${{ fromJSON(steps.release.outputs.result).prerelease }}
   json:
-    description: Release JSON
-    value: ${{ steps.create.outputs.json }}
+    description: Release as JSON
+    value: ${{ steps.release.outputs.result }}
 runs:
   using: composite
   steps:
-  - id: generated-release-notes
-    if: ${{ inputs.generate-notes }}
-    uses: swaglive/action-generate-release-notes@v1
+  - id: release
+    uses: actions/github-script@v7
+    env:
+      INPUT_TAG: ${{ inputs.tag }}
+      INPUT_NAME: ${{ inputs.name }}
+      INPUT_BODY: ${{ inputs.body }}
+      INPUT_BODY-FILE: ${{ inputs.body-file }}
+      INPUT_GENERATE-RELEASE-NOTES: ${{ inputs.generate-release-notes }}
+      INPUT_PRERELEASE: ${{ inputs.prerelease }}
+      INPUT_FILES: ${{ inputs.files }}
+      INPUT_DISCUSSION-CATEGORY: ${{ inputs.discussion-category }}
+      INPUT_DRY-RUN: ${{ inputs.dry-run }}
     with:
-      tag: ${{ inputs.tag }}
-      base: ${{ inputs.generate-notes }}
+      script: |-
+        const fs = require('fs').promises
+        const path = require('path')
+        const util = require('util')
 
-  - shell: bash
-    id: create
-    env:
-      GITHUB_TOKEN: ${{ inputs.token }}
-      GH_REPO: ${{ inputs.repository }}
-      OPTS: |
-        tag_name: ${{ inputs.tag }}
-        name: ${{ inputs.name || steps.generated-release-notes.outputs.name || inputs.tag }}
-        prerelease: ${{ inputs.prerelease }}
-        discussion_category_name: ${{ inputs.discussion-category }}
-        body:
-        - ${{ toJSON(inputs.body || null) }}
-        - ${{ steps.generated-release-notes.outputs.body }}
-    run: |
-      opts=$(
-        yq e -o json <<< $OPTS | jq -c 'del(.. | nulls) | .body |= join("\n\n")'
-      )
+        const { owner, repo } = context.repo
+        const tag_name = core.getInput('tag', { required: true })
+        let name = core.getInput('name')
+        let body = [core.getInput('body')]
+        const bodyFile = core.getInput('body-file')
+        const prerelease = core.getBooleanInput('prerelease')
+        const files = core.getMultilineInput('files')
+        const discussion_category_name = core.getInput('discussion-category')
+        const dryRun = core.getBooleanInput('dry-run')
+        let generate_release_notes = core.getInput('generate-release-notes')
 
-      release=$(
-        gh api repos/{owner}/{repo}/releases --input - <<< $opts
-      )
+        // Append `body-file` to `body`
+        if (bodyFile) {
+          body = [
+            ...body,
+            await fs.readFile(bodyFile, 'utf8')
+          ]
+        }
 
-      echo "id=$(jq -rc '.id' <<< $release)" >> $GITHUB_OUTPUT
-      echo "json=$(jq -c '.' <<< $release)" >> $GITHUB_OUTPUT
+        try {
+          generate_release_notes = core.getBooleanInput('generate-release-notes')
+        } catch (error) {
+        }
 
-  - shell: bash
-    if: ${{ inputs.files }}
-    env:
-      GITHUB_TOKEN: ${{ inputs.token }}
-      GH_REPO: ${{ inputs.repository }}
-    run: |
-      # BUG: https://github.com/cli/cli/issues/4993
-      gh release upload ${{ inputs.tag }} --clobber ${{ inputs.files }}
+        if (generate_release_notes) {
+          let { data } = await github.rest.repos.generateReleaseNotes({
+            owner,
+            repo,
+            tag_name,
+            previous_tag_name: generate_release_notes === true ? undefined : generate_release_notes,
+          })
+          name = name || data.name
+          body = [...body, data.body]
+        }
+
+        let release = {
+          owner,
+          repo,
+          tag_name,
+          prerelease,
+          discussion_category_name,
+          name,
+          body: body.filter(x => x).join('\n'),
+        }
+
+        // Create Release
+        if (!dryRun) {
+          release = await github.rest.repos.createRelease(release)
+
+          await Promise.all(files.map(async (file) => github.rest.repos.uploadReleaseAsset({
+            owner,
+            repo,
+            release_id: release.id,
+            name: path.basename(file),
+            data: await fs.readFile(file),
+          })))
+        }
+
+        core.group('Output', () => {
+          core.info(util.inspect(release, { colors: true }))
+        })
+
+        return release
