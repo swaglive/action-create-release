@@ -1,5 +1,8 @@
-name: Create Release
+name: Create Github Release
 description: Create a Github Release
+branding:
+  icon: box
+  color: white
 inputs:
   tag:
     description: Tag to create release
