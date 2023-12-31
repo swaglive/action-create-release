@@ -1,5 +1,5 @@
 name: Create Release
-description: Create Github Release
+description: Create a Github Release
 inputs:
   tag:
     description: Tag to create release
@@ -16,7 +16,7 @@ inputs:
     required: false
   generate-release-notes:
     description: |-
-      Automatically generate release notes. Set to true to generate release notes from the previous latest release. Valid values: Boolean or tag ref
+      Automatically generate release notes. Set to `true` to generate release notes from the latest release. Valid values: `true`, `false` or tag
     required: true
     default: true
   prerelease:
