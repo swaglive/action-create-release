@@ -126,7 +126,7 @@ runs:
 
         // Create Release
         if (!dryRun) {
-          release = await github.rest.repos.createRelease(release)
+          { data: release } = await github.rest.repos.createRelease(release)
 
           await Promise.all(files.map(async (file) => github.rest.repos.uploadReleaseAsset({
             owner,
