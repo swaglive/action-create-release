@@ -18,8 +18,8 @@ permissions:
 | Input | Required? | Default | Description |
 | ----- | --------- | ------- | ----------- |
 | `tag` | yes | `${{ github.ref_name }}` | Tag name for the release. This can be an existing tag or a new one. |
-| `name` | no | | Name for the release |
-| `body` | no | | Body content for the release |
+| `name` | no | | Name for the release. Auto-generated if `generate-release-notes` is set |
+| `body` | no | | Body content for the release. Auto-generated if `generate-release-notes` is set |
 | `body-file` | no | | File path of the body content to be included in the release |
 | `generate-release-notes` | yes | `true` | Automatically generate release notes. Set to `true` to generate release notes from the latest release. Valid values: `true`, `false` or tag |
 | `prerelease` | no | `false` | Mark release as a prerelease.  Valid values: `true` or `false` |
