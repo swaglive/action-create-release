@@ -5,17 +5,17 @@ branding:
   color: white
 inputs:
   tag:
-    description: Tag to create release
+    description:  Tag name for the release. This can be an existing tag or a new one.
     required: true
     default: ${{ github.ref_name }}
   name:
-    description: Release name
+    description: Name for the release
     required: false
   body:
-    description: Release body
+    description: Body content for the release
     required: false
   body-file:
-    description: Filename to the release body content
+    description: File path of the body content to be included in the release
     required: false
   generate-release-notes:
     description: |-
