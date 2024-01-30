@@ -15,6 +15,8 @@ export async function run(): Promise<void> {
   const github = getOctokit(core.getInput('token'))
 
   const tagName: string = core.getInput('tag', { required: true })
+  const targetCommitish: string =
+    core.getInput('target-commitish') || context.sha
   let name: string = core.getInput('name')
   const body: string[] = [core.getInput('body')]
   const bodyFile: string = core.getInput('body-file')
@@ -52,6 +54,7 @@ export async function run(): Promise<void> {
     target_commitish?: string
   } = {
     tag_name: tagName,
+    target_commitish: targetCommitish,
     prerelease,
     name,
     body: body.filter(x => x).join('\n')
@@ -87,6 +90,7 @@ export async function run(): Promise<void> {
   core.setOutput('name', release.name)
   core.setOutput('body', release.body)
   core.setOutput('tag', release.tag_name)
+  core.setOutput('target-commitish', release.target_commitish)
   core.setOutput('prerelease', release.prerelease)
   core.setOutput('json', release)
 

@@ -28950,6 +28950,7 @@ async function run() {
     const { owner, repo } = github_1.context.repo;
     const github = (0, github_1.getOctokit)(core.getInput('token'));
     const tagName = core.getInput('tag', { required: true });
+    const targetCommitish = core.getInput('target-commitish') || github_1.context.sha;
     let name = core.getInput('name');
     const body = [core.getInput('body')];
     const bodyFile = core.getInput('body-file');
@@ -28976,6 +28977,7 @@ async function run() {
     }
     let release = {
         tag_name: tagName,
+        target_commitish: targetCommitish,
         prerelease,
         name,
         body: body.filter(x => x).join('\n')
@@ -29006,6 +29008,7 @@ async function run() {
     core.setOutput('name', release.name);
     core.setOutput('body', release.body);
     core.setOutput('tag', release.tag_name);
+    core.setOutput('target-commitish', release.target_commitish);
     core.setOutput('prerelease', release.prerelease);
     core.setOutput('json', release);
     core.group('Output', async () => {

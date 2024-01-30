@@ -8,6 +8,10 @@ inputs:
     description:  Tag name for the release. This can be an existing tag or a new one.
     required: true
     default: ${{ github.ref_name }}
+  target-commitish:
+    description: Commit SHA or branch to tag. Defaults to the repository's default branch (usually `master`)
+    required: false
+    default: ${{ github.sha }}
   name:
     description: Name for the release. Auto-generated if `generate-release-notes` is set
     required: false
